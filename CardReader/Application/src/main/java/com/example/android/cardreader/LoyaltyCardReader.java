@@ -39,6 +39,8 @@ public class LoyaltyCardReader implements NfcAdapter.ReaderCallback {
     // ISO-DEP command HEADER for selecting an AID.
     // Format: [Class | Instruction | Parameter 1 | Parameter 2]
     private static final String SELECT_APDU_HEADER = "00A40400";
+    private static final String Verify_APDU_HEADER = "00200081";
+
 
     // "OK" status word sent in response to SELECT AID command (0x9000)
     private static final byte[] SELECT_OK_SW = {(byte) 0x90, (byte) 0x00};
@@ -88,12 +90,18 @@ public class LoyaltyCardReader implements NfcAdapter.ReaderCallback {
                 int resultLength = result.length;
                 byte[] statusWord = {result[resultLength-2], result[resultLength-1]};
                 byte[] payload = Arrays.copyOf(result, resultLength-2);
+                String accountNumber = new String(payload, "UTF-8");
                 if (Arrays.equals(SELECT_OK_SW, statusWord)) {
                     // The remote NFC device will immediately respond with its stored account number
-                    String accountNumber = new String(payload, "UTF-8");
                     Log.i(TAG, "Received: " + accountNumber);
                     // Inform CardReaderFragment of received account number
                     mAccountCallback.get().onAccountReceived(accountNumber);
+                }
+                byte[] resultV = isoDep.transceive(buildVerifyApdu(accountNumber));
+                int resultLengthV = resultV.length;
+                byte[] statusWordV = {resultV[resultLengthV-2], resultV[resultLengthV-1]};
+                if(Arrays.equals(SELECT_OK_SW, statusWordV)){
+                    Log.i(TAG, "VERIFY");
                 }
             } catch (IOException e) {
                 Log.e(TAG, "Error communicating with card: " + e.toString());
@@ -131,6 +139,12 @@ public class LoyaltyCardReader implements NfcAdapter.ReaderCallback {
         return new String(hexChars);
     }
 
+
+
+    public static byte[] buildVerifyApdu(String password) {
+        return HexStringToByteArray(Verify_APDU_HEADER + String.format("%02X",
+                password.length() / 2) + password + "00");
+    }
     /**
      * Utility class to convert a hexadecimal string to a byte string.
      *

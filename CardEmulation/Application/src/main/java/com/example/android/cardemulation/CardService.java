@@ -47,6 +47,7 @@ public class CardService extends HostApduService {
     // ISO-DEP command HEADER for selecting an AID.
     // Format: [Class | Instruction | Parameter 1 | Parameter 2]
     private static final String SELECT_APDU_HEADER = "00A40400";
+    private static final String Verify_APDU_HEADER = "00200081";
 
     // "OK" status word sent in response to SELECT AID command (0x9000)
     private static final byte[] SELECT_OK_SW = HexStringToByteArray("9000");
@@ -88,16 +89,20 @@ public class CardService extends HostApduService {
     @Override
     public byte[] processCommandApdu(byte[] commandApdu, Bundle extras) {
         Log.i(TAG, "Received APDU: " + ByteArrayToHexString(commandApdu));
+        String account = AccountStorage.GetAccount(this);
+        byte[] VERIFY_APDU = buildVerifyApdu(account);
         // If the APDU matches the SELECT AID command for this service,
         // send the loyalty card account number, followed by a SELECT_OK status trailer (0x9000).
         if (Arrays.equals(SELECT_APDU, commandApdu)) {
 
             // Añadimos el token #00 delante del número de empleado de la misma manera que con el lector QR
             // La parte buena del número de empleado es el id que va detrás del token #00
-            String account = "#00" + AccountStorage.GetAccount(this);
+//            String account = "#00" + AccountStorage.GetAccount(this);
             byte[] accountBytes = account.getBytes();
             Log.i(TAG, "Sending account number: " + account);
             return ConcatArrays(accountBytes, SELECT_OK_SW);
+        } else if(Arrays.equals(VERIFY_APDU, commandApdu)) {
+            return SELECT_OK_SW;
         } else {
             return UNKNOWN_CMD_SW;
         }
@@ -115,6 +120,11 @@ public class CardService extends HostApduService {
         // Format: [CLASS | INSTRUCTION | PARAMETER 1 | PARAMETER 2 | LENGTH | DATA]
         return HexStringToByteArray(SELECT_APDU_HEADER + String.format("%02X",
                 aid.length() / 2) + aid);
+    }
+
+    public static byte[] buildVerifyApdu(String password) {
+        return HexStringToByteArray(Verify_APDU_HEADER + String.format("%02X",
+                password.length() / 2) + password + "00");
     }
 
     /**

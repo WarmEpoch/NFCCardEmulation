@@ -57,7 +57,7 @@ limitations under the License.
         dispatch).
     -->
 
-    <aid-group android:description="@string/card_title" android:category="other">
+    <aid-group android:description="@string/card_title" android:category="payment">
         <aid-filter android:name="F222939085"/>
     </aid-group>
 <!-- END_INCLUDE(CardEmulationXML) -->
